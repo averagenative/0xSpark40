@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.averagenative.spark40</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>0xSpark40</name>
+  <summary>Control a Positive Grid Spark 40 amp over Bluetooth</summary>
+  <description>
+    <p>
+      Native Linux control for the Positive Grid Spark 40 guitar amp. Change amp models,
+      effects, and every knob from one screen that follows the amp's own controls.
+    </p>
+    <ul>
+      <li>Search ToneCloud and play shared presets, with no account needed</li>
+      <li>Play song presets from a community collection, and keep your own preset files</li>
+      <li>Save the current sound to the amp's four presets</li>
+      <li>Record over USB with a level meter, or switch to a dry signal for reamping</li>
+      <li>Themes that match the Spark's black, pearl, and red finishes, and other tolex colors</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.averagenative.spark40.desktop</launchable>
+  <url type="homepage">https://github.com/averagenative/0xSpark40</url>
+  <url type="bugtracker">https://github.com/averagenative/0xSpark40/issues</url>
+  <developer id="io.github.averagenative">
+    <name>averagenative</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@VERSION@" date="@DATE@"/>
+  </releases>
+</component>

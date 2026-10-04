@@ -2,7 +2,22 @@
 
 Native Linux control for the Positive Grid Spark 40 amp. Positive Grid's Spark app runs only on iOS and Android, and its firmware updater only on Windows and macOS. This project talks to the amp's Bluetooth LE control service directly, so you can read and change its settings from Linux: presets, amp and effect models, every knob, and the amp's own change reports. It also searches Positive Grid's ToneCloud, so you can play shared presets without a phone.
 
-**Status:** 0.2. A GTK4 app, a command-line tool, and a Python library, tested on a Spark 40 running firmware 1.2.3.37 on Fedora 44.
+**Status:** 1.0. A GTK4 app, a command-line tool, and a Python library, tested on a Spark 40 running firmware 1.2.3.37 on Fedora 44.
+
+## Install
+
+Download `0xSpark40-1.0.0-x86_64.AppImage` from the [releases page](https://github.com/averagenative/0xSpark40/releases), make it executable, and run it:
+
+```bash
+chmod +x 0xSpark40-1.0.0-x86_64.AppImage
+./0xSpark40-1.0.0-x86_64.AppImage --install
+```
+
+The AppImage is one standalone file: it bundles Python, GTK 4, libadwaita, and GStreamer, so it runs on any x86_64 desktop with glibc 2.41 or later (Fedora 42, Ubuntu 25.04, Debian 13, or later) without installing anything else. `--install` copies it to `~/Applications`, adds **0xSpark40** to your app grid with its icon, and links the `spark40` command into `~/.local/bin`. `--uninstall` removes that again. You can also run the AppImage directly without installing it; `./0xSpark40-1.0.0-x86_64.AppImage cli info` runs the command-line tool.
+
+Everything the app saves lives in your home folder, so it's kept across AppImage updates: presets and backups in `~/Music/Spark Presets`, settings in `~/.config/spark40`, and downloads in `~/.cache/spark40`. `spark40 paths` lists them.
+
+To install with pip instead, using your system's PyGObject, GTK, and libadwaita, download the wheel from the same page and run `pip install --user spark40-1.0.0-py3-none-any.whl`. That gives you the `spark40` command and the `spark40-gui` app.
 
 ## Requirements
 
@@ -32,7 +47,7 @@ Start the app from the repository:
 python3 -m spark40.gui
 ```
 
-Run `make install` once to add **0xSpark40** to your GNOME app grid with an icon. `python3 -m spark40.gui --demo` opens the window with sample settings and no amp.
+From a clone, run `make install` once to add **0xSpark40** to your GNOME app grid with an icon. `python3 -m spark40.gui --demo` opens the window with sample settings and no amp.
 
 The window finds the amp over Bluetooth by itself and follows the signal chain from top to bottom:
 
@@ -76,6 +91,8 @@ python3 -m spark40 info
 python3 -m spark40 dump
 python3 -m spark40 monitor
 ```
+
+With the AppImage installed, the command is `spark40`; from a clone, use `python3 -m spark40`. `spark40 paths` shows where settings, presets, and caches are stored.
 
 `info` shows the name, serial number, firmware, and the four stored presets, with a star on the active one. `dump` shows the settings the amp is playing right now, including changes you haven't saved; `dump 2` shows stored preset 2 instead. `monitor` prints changes as you turn knobs or press preset buttons on the amp.
 

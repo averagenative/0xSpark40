@@ -282,6 +282,12 @@ class SparkWindow(Adw.ApplicationWindow):
         self.add_css_class("spark-window")
         if self.prefs.get("debug") and not log.debug_enabled():
             log.enable_debug(True)
+        import os
+        from .. import __version__
+        from ..cli import paths
+        self.log.info("0xSpark40 %s running from %s", __version__, os.environ.get("APPIMAGE") or "source")
+        for label, path in paths():
+            self.log.info("%s: %s", label, path)
         themes.manager().apply(self.prefs.get("theme", themes.DEFAULT))
         theme_action = Gio.SimpleAction.new_stateful(
             "theme", GLib.VariantType.new("s"), GLib.Variant("s", themes.current().id))

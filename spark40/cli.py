@@ -249,6 +249,23 @@ def cmd_cloud(args) -> int:
     return 0
 
 
+def paths() -> list[tuple[str, Path]]:
+    from .gui import settings as gui_settings
+    return [
+        ("Settings", gui_settings.PATH),
+        ("Your presets", library.USER_DIR),
+        ("Backups of the amp's presets", library.BACKUP_DIR),
+        ("Presets replaced by Save to preset", library.REPLACED_DIR),
+        ("Community presets", library.CACHE),
+        ("Theme textures and other cache", library.CACHE.parent),
+    ]
+
+
+def cmd_paths(args) -> None:
+    for label, path in paths():
+        print(f"{label:36s} {path}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="spark40", description="Control a Positive Grid Spark 40 over Bluetooth.")
     parser.add_argument("--address", help="Bluetooth address of the amp's BLE side (default: find it)")
@@ -278,6 +295,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--force", action="store_true", help="send even if this firmware lacks the model")
     p = sub.add_parser("reverb", help="pick the reverb room: spark40 reverb 'plate rich'")
     p.add_argument("type")
+    sub.add_parser("paths", help="where settings, presets, backups, and caches are stored")
     p = sub.add_parser("models", help="list amp and effect models (no amp needed)")
     p.add_argument("slot", nargs="?", type=slot_arg)
     p = sub.add_parser("backup", help="save the four presets and the current settings as JSON")
@@ -317,6 +335,9 @@ def main(argv: list[str] | None = None) -> int:
         log.enable_debug(True)
     if args.command == "models":
         cmd_models(args)
+        return 0
+    if args.command == "paths":
+        cmd_paths(args)
         return 0
     if args.command == "cloud":
         from .ble import SparkNotFound

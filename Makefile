@@ -27,3 +27,22 @@ install:
 
 uninstall:
 	rm -f $(APPS)/$(APP_ID).desktop $(ICONS)/$(APP_ID).svg
+
+VERSION = $(shell $(PYTHON) -c 'import spark40; print(spark40.__version__)')
+
+.PHONY: appimage test-standalone dist release
+
+appimage: check
+	packaging/build-appimage.sh
+
+test-standalone:
+	packaging/test-standalone.sh
+
+dist: check
+	rm -f dist/spark40-$(VERSION)*
+	$(PYTHON) -m pip wheel . --no-deps --no-build-isolation -w dist -q
+	$(PYTHON) -c "from setuptools import build_meta; build_meta.build_sdist('dist')"
+	rm -rf spark40.egg-info build/lib build/bdist*
+
+release: dist appimage
+	packaging/release.sh $(VERSION)

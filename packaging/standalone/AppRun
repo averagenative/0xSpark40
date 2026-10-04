@@ -1,0 +1,52 @@
+#!/bin/sh
+# 0xSpark40 standalone AppImage. Python, PyGObject, GTK 4, libadwaita, and GStreamer are bundled.
+# The host provides glibc, the display and graphics stack, fonts and text shaping, libpipewire
+# (which must match the running PipeWire daemon), BlueZ, and the CA certificates, as on any desktop.
+#   ./0xSpark40.AppImage                 the app (add --demo to try it without an amp)
+#   ./0xSpark40.AppImage cli info        the spark40 command-line tool
+#   ./0xSpark40.AppImage cli paths       where settings, presets, and caches live
+#   ./0xSpark40.AppImage --install       add it to the app grid and put spark40 in ~/.local/bin
+#   ./0xSpark40.AppImage --uninstall     remove that integration
+#   ./0xSpark40.AppImage --version
+HERE="$(dirname "$(readlink -f "$0")")"
+export APPDIR="$HERE" SPARK40_APPDIR="$HERE"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/spark40"
+
+for hook in "$HERE"/apprun-hooks/*.sh; do
+    [ -f "$hook" ] && . "$hook"
+done
+# The GTK hook forces X11 and GTK's built-in theme. GTK 4 runs natively on Wayland, and
+# GTK_THEME hides libadwaita's stylesheet (toggle groups lose their styling), so undo both.
+unset GDK_BACKEND GTK_THEME
+
+export PYTHONHOME="$HERE/usr"
+export PYTHONPATH="$HERE/usr/lib/spark40:$HERE/usr/lib/python3/dist-packages"
+export PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1
+export GI_TYPELIB_PATH="$HERE/usr/lib/girepository-1.0"
+export LD_LIBRARY_PATH="$HERE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="$HERE/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export GST_PLUGIN_SYSTEM_PATH_1_0="$HERE/usr/lib/gstreamer-1.0" GST_PLUGIN_PATH_1_0=""
+export GST_PLUGIN_SCANNER_1_0="$HERE/usr/libexec/gstreamer-1.0/gst-plugin-scanner"
+export GST_REGISTRY_1_0="$CACHE/gstreamer-registry-$(basename "${APPIMAGE:-standalone}").bin"
+mkdir -p "$CACHE" 2>/dev/null
+
+# The bundled OpenSSL looks for certificates where Debian keeps them. Point it at the host's
+# bundle (kept current by the host), falling back to the copy bundled at build time.
+if [ -z "${SSL_CERT_FILE:-}" ]; then
+    for bundle in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt \
+                  /etc/ssl/ca-bundle.pem /etc/ssl/cert.pem /etc/pki/tls/cacert.pem \
+                  "$HERE/usr/share/ca-certificates.crt"; do
+        if [ -r "$bundle" ]; then export SSL_CERT_FILE="$bundle"; break; fi
+    done
+fi
+
+PY="$HERE/usr/bin/python3"
+case "$(basename "${ARGV0:-$0}")" in
+    spark40|spark40-cli) exec "$PY" -m spark40 "$@" ;;
+esac
+case "${1:-}" in
+    cli) shift; exec "$PY" -m spark40 "$@" ;;
+    --install|--uninstall) exec "$PY" -m spark40.gui.integrate "$@" ;;
+    --version) exec "$PY" -c 'import spark40; print("0xSpark40", spark40.__version__)' ;;
+esac
+exec "$PY" -m spark40.gui "$@"
