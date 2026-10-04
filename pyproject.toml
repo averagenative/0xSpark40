@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spark40"
+dynamic = ["version"]
+description = "Native Linux control for the Positive Grid Spark 40 amp over Bluetooth: library and CLI"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = []
+keywords = ["positive grid", "spark", "spark 40", "guitar", "amp", "bluetooth", "ble"]
+classifiers = [
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio",
+]
+
+[project.optional-dependencies]
+bluetooth = ["PyGObject>=3.50"]
+
+[project.urls]
+Homepage = "https://github.com/averagenative/0xSpark40"
+
+[project.scripts]
+spark40 = "spark40.cli:main"
+
+[tool.setuptools]
+packages = ["spark40"]
+
+[tool.setuptools.dynamic]
+version = {attr = "spark40.__version__"}
