@@ -202,6 +202,28 @@ class Spark:
             return False
         return self.select_preset(p.TEMP_SLOT)
 
+    def store_preset(self, preset: Preset, number: int, force: bool = False) -> bool:
+        """Write a preset into stored slot ``number`` (0-3), switch to it, and read it back to check.
+
+        Returns whether the slot now holds the preset. This replaces what the slot held.
+        """
+        if not 0 <= number <= 3:
+            raise ValueError("preset slots are 0 to 3")
+        bad = preset.unsupported(self.firmware)
+        if bad and not force:
+            raise UnsupportedModel(f"This firmware lacks {', '.join(bad)}; storing the preset can crash the amp")
+        if not self.command(p.PRESET, preset.encode(slot=number), timeout=PRESET_TIMEOUT):
+            return False
+        if not self.select_preset(number):
+            return False
+        stored = self.get_preset(number)
+        expected = Preset.parse(preset.encode(slot=number))
+        same = (stored.name == expected.name and [d.id for d in stored.pedals] == [d.id for d in expected.pedals]
+                and [d.on for d in stored.pedals] == [d.on for d in expected.pedals])
+        if not same:
+            LOG.warning("Preset %d reads back as %r, not %r", number + 1, stored.name, expected.name)
+        return same
+
     # Change reports
 
     def listen(self, timeout: float | None = None) -> Iterator[Event]:

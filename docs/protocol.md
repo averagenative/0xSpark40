@@ -59,6 +59,8 @@ The pedals are always in this order: noise gate, compressor, drive, amp, modulat
 
 `spark40.preset.Preset.encode` reproduces the amp's own preset bytes exactly; the tests check this against presets read from the amp.
 
+To store a preset, send it with `01 01` and slot 0 to 3 in its header, then switch to that slot with `01 38 00 <slot>`. Reading the slot back with `02 01 00 <slot>` returns the new preset, and it is still there after a reconnect. Whether it survives turning the amp off and on is not yet tested.
+
 To play a preset without storing it, send it to slot `0x7f` with `01 01`, then switch to that slot with `01 38 00 7f`. Sending alone doesn't change the sound. The amp keeps playing the live slot after the Bluetooth connection closes, and `02 10` then reports `0x7f` as the active preset.
 
 ## Amp model changes

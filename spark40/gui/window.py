@@ -449,9 +449,13 @@ class SparkWindow(Adw.ApplicationWindow):
         return outer
 
     def _build_presets(self) -> Gtk.Widget:
-        outer, body = card("Presets", tooltip="The four presets stored on the amp")
-        hint = Gtk.Label(label="Click a preset to switch to it. To store the current sound in a preset, hold that "
-                               "preset's button on the amp for two seconds.", xalign=0, wrap=True)
+        save = Gtk.Button(label="Save to preset...",
+                          tooltip_text="Store the current sound in one of the amp's four presets")
+        save.add_css_class("suggested-action")
+        save.connect("clicked", self._ask_store)
+        outer, body = card("Presets", save, tooltip="The four presets stored on the amp")
+        hint = Gtk.Label(label="Click a preset to switch to it. Save to preset stores the current sound, like "
+                               "holding a preset button on the amp for two seconds.", xalign=0, wrap=True)
         hint.add_css_class("caption")
         hint.add_css_class("dim-label")
         body.append(hint)
@@ -473,6 +477,40 @@ class SparkWindow(Adw.ApplicationWindow):
             self.preset_buttons.append(button)
         body.append(row)
         return outer
+
+    def _ask_store(self, _button) -> None:
+        if self.state is None:
+            self._on_error("Connect the amp to save a preset.")
+            return
+        names = [self.state.names[i] if i < len(self.state.names) else f"Preset {i + 1}" for i in range(4)]
+        active = self.state.active if 0 <= self.state.active < 4 else 0
+        slot = Adw.ComboRow(title="Preset", model=Gtk.StringList.new([f"{i + 1}: {n}" for i, n in enumerate(names)]),
+                            selected=active)
+        name = Adw.EntryRow(title="Name", text=self.state.current.name or "")
+        rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        rows.add_css_class("boxed-list")
+        rows.append(slot)
+        rows.append(name)
+        dialog = Adw.AlertDialog(
+            heading="Save to a preset",
+            body="This replaces the preset you pick on the amp with the current sound. The preset it replaces is "
+                 "saved first, in Backups/Replaced in your presets folder.",
+            extra_child=rows)
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("save", "Replace preset")
+        dialog.set_response_appearance("save", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+
+        def respond(_dialog, response):
+            if response == "save":
+                number = slot.get_selected()
+                self.log.info("Saving the current sound to preset %d", number + 1)
+                self.apply_status.busy(f"Saving to preset {number + 1}...")
+                self.worker.submit("store_preset", number, name.get_text().strip())
+
+        dialog.connect("response", respond)
+        dialog.present(self)
 
     # Actions from the controls
 
@@ -588,6 +626,14 @@ class SparkWindow(Adw.ApplicationWindow):
             self.apply_status.done(f"Couldn't load '{name}'")
             if message:
                 self._on_error(message)
+        elif kind == "stored":
+            number, ok, message = args
+            if ok:
+                self.apply_status.done(f"Saved to preset {number + 1}")
+            else:
+                self.apply_status.done(f"Couldn't save preset {number + 1}")
+                if message:
+                    self._on_error(message)
         elif kind == "saved":
             self.apply_status.done(f"Saved {args[0]}")
             if self.presets_dialog:

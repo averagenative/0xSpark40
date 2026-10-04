@@ -205,6 +205,22 @@ def play(spark: Spark, preset: Preset, force: bool) -> None:
           "two seconds.")
 
 
+def cmd_store(spark: Spark, args) -> None:
+    number = args.number - 1
+    preset = Preset.load(args.file) if args.file else spark.get_current()
+    if args.name:
+        preset.name = args.name
+    old = spark.get_preset(number)
+    kept = library.keep_replaced(old, number)
+    print(f"Saved the old preset {args.number} ({old.name!r}) to {kept}")
+    try:
+        ok = spark.store_preset(preset, number, force=args.force)
+    except UnsupportedModel as err:
+        sys.exit(str(err))
+    print(f"Preset {args.number} is now {preset.name!r}" if ok else
+          f"Preset {args.number} didn't read back as saved; run with --debug for details.")
+
+
 def cmd_load(spark: Spark, args) -> None:
     play(spark, Preset.load(args.file), args.force)
 
@@ -272,6 +288,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("load", help="play a JSON preset on the amp without saving it to a slot")
     p.add_argument("file")
     p.add_argument("--force", action="store_true", help="send even if this firmware lacks a model in it")
+    p = sub.add_parser("store", help="replace stored preset 1-4 with the current sound, or with a JSON preset")
+    p.add_argument("number", type=int, choices=range(1, 5))
+    p.add_argument("--file", help="store this JSON preset instead of the current sound")
+    p.add_argument("--name", help="name to store the preset under")
+    p.add_argument("--force", action="store_true", help="store even if this firmware lacks a model in it")
     p = sub.add_parser("cloud", help="search Positive Grid's ToneCloud, or play or save a preset from it")
     p.add_argument("keyword", nargs="?", help="song, artist, or style")
     p.add_argument("--order", choices=library.TONECLOUD_ORDERS, default="popular")
@@ -285,6 +306,7 @@ def build_parser() -> argparse.ArgumentParser:
 COMMANDS = {
     "info": cmd_info, "dump": cmd_dump, "monitor": cmd_monitor, "preset": cmd_preset, "set": cmd_set,
     "model": cmd_model, "reverb": cmd_reverb, "backup": cmd_backup, "save": cmd_save, "load": cmd_load,
+    "store": cmd_store,
 }
 
 

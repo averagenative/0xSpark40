@@ -94,6 +94,19 @@ def download_community(timeout: float = 30.0) -> int:
     return count
 
 
+REPLACED_DIR = BACKUP_DIR / "Replaced"
+
+
+def keep_replaced(preset: Preset, number: int) -> Path:
+    """Save a stored preset that is about to be overwritten, so it can be put back."""
+    from datetime import datetime
+    REPLACED_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y-%m-%d %H%M%S")
+    path = REPLACED_DIR / f"{stamp} preset {number + 1} - {safe_name(preset.name)}.json"
+    preset.save(path)
+    return path
+
+
 def read(path: Path) -> Preset:
     return Preset.from_dict(json.loads(Path(path).read_text()))
 

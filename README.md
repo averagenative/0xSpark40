@@ -39,7 +39,7 @@ The window finds the amp over Bluetooth by itself and follows the signal chain f
 - **Noise Gate, Compressor, and Drive:** each with an on/off switch, a model picker, and that model's knobs.
 - **Amp:** the amp model and its five knobs, beside the **Recording level** meter for the USB input.
 - **Modulation, Delay, and Reverb:** the reverb picker chooses the room (Room Studio A to Plate Long).
-- **Presets:** the four presets stored on the amp. Click one to switch to it.
+- **Presets:** the four presets stored on the amp. Click one to switch to it. **Save to preset...** stores the current sound in the preset you pick, under the name you choose; it does the same job as holding a preset button on the amp. Before it replaces a preset, the app saves the old one to `~/Music/Spark Presets/Backups/Replaced`.
 
 The window mirrors the amp: turn a knob or press a preset button on the amp, and the window follows. It reconnects by itself when the amp turns off and on. Model pickers list only the models your firmware has.
 
@@ -61,7 +61,7 @@ Click **Presets** in the header bar for three sources:
 - **ToneCloud:** search Positive Grid's ToneCloud by song, artist, or style, sorted by downloads, date, or name. Searching and downloading need no account.
 - **Community:** the song and artist presets collected by [Ignitron](https://github.com/stangreg/Ignitron), downloaded to your computer the first time you ask.
 
-Click a preset to play it on the amp. The save button keeps a copy in your presets. Playing a preset doesn't change the four stored presets; to keep it on the amp, hold a preset button for two seconds. **Keep my amp volume** (on by default) plays a preset's sound with your current amp Volume, so a loud preset doesn't jump out.
+Click a preset to play it on the amp. The save button keeps a copy in your presets. Playing a preset doesn't change the four stored presets; to keep it on the amp, click **Save to preset...** in the main window, or hold a preset button on the amp for two seconds. **Keep my amp volume** (on by default) plays a preset's sound with your current amp Volume, so a loud preset doesn't jump out.
 
 Presets that use models your firmware doesn't have are greyed out, with the missing models listed. Many early ToneCloud presets use model names from other Positive Grid products (`Noisegate`, `FreeVerb`, `GraphicalEQ7`), which a Spark 40 can't load.
 
@@ -93,7 +93,14 @@ python3 -m spark40 reverb "plate rich"
 
 Values are 0 to 10, like the Spark app. The sections are `gate`, `comp`, `drive`, `amp`, `mod`, `delay`, and `reverb`. Knob names match the Spark app's labels, and a unique prefix is enough (`set amp vol 4`). `python3 -m spark40 models` lists every amp and effect, and works without the amp.
 
-Changes affect the sound the amp is playing. They don't change a stored preset until you hold that preset's button on the amp for two seconds.
+Changes affect the sound the amp is playing. They don't change a stored preset until you store them with `store` or hold that preset's button on the amp for two seconds.
+
+```bash
+python3 -m spark40 store 2 --name "My crunch"
+python3 -m spark40 store 4 --file "my lead.json"
+```
+
+`store` replaces stored preset 1 to 4 with the current sound, or with a preset file, and reads it back to check. It saves the preset it replaces to `~/Music/Spark Presets/Backups/Replaced` first.
 
 ### Presets
 

@@ -17,7 +17,7 @@ from pathlib import Path
 
 from gi.repository import GLib
 
-from .. import catalog, log
+from .. import catalog, library, log
 from ..client import Spark, SparkError, UnsupportedModel
 from ..preset import Preset
 
@@ -296,6 +296,30 @@ class SparkWorker(threading.Thread):
         self._refresh_requested = True
         GLib.idle_add(self._on_result, "loaded" if ok else "failed", name,
                       None if ok else "The amp didn't accept the preset.")
+
+    def _cmd_store_preset(self, number: int, name: str, preset: Preset | None = None) -> None:
+        """Write the current sound (or ``preset``) into stored slot ``number``, keeping the old one in a file."""
+        self._flush_params()
+        try:
+            old = self.spark.get_preset(number)
+            kept = library.keep_replaced(old, number)
+            LOG.info("Saved the old preset %d (%r) to %s", number + 1, old.name, kept)
+            preset = preset or self.spark.get_current()
+            preset.name = name or preset.name
+            ok = self.spark.store_preset(preset, number)
+        except UnsupportedModel as err:
+            GLib.idle_add(self._on_result, "stored", number, False, str(err))
+            return
+        except Exception as err:
+            GLib.idle_add(self._on_result, "stored", number, False, str(err))
+            raise
+        self._dry_states = None
+        if self.state is not None:
+            self.state.edited = False
+        self._refresh_requested = True
+        self._names_requested = True
+        GLib.idle_add(self._on_result, "stored", number, ok,
+                      None if ok else f"Preset {number + 1} didn't read back as saved. See Console.")
 
     def _cmd_save_file(self, path: Path, name: str) -> None:
         preset = self.spark.get_current()
