@@ -20,6 +20,12 @@ from . import catalog
 from .protocol import ProtocolError, Reader, TEMP_SLOT, Writer
 
 
+def ascii_text(text: str) -> str:
+    """Text the amp can store: printable ASCII, with anything else (accents, emoji) dropped."""
+    kept = "".join(c for c in text if " " <= c <= "~")
+    return " ".join(kept.split())
+
+
 @dataclass
 class Pedal:
     id: str
@@ -69,8 +75,9 @@ class Preset:
 
     def encode(self, slot: int | None = None) -> bytes:
         """The payload for sending this preset to ``slot`` (0-3, or the live slot 0x7F)."""
-        w = Writer().long_string(self.uuid).string(self.name).string(self.version)
-        w.string(self.description).string(self.icon).float(self.bpm).array(len(self.pedals))
+        w = Writer().long_string(ascii_text(self.uuid)).string(ascii_text(self.name)).string(ascii_text(self.version))
+        w.string(ascii_text(self.description)[:255]).string(ascii_text(self.icon)).float(self.bpm)
+        w.array(len(self.pedals))
         for pedal in self.pedals:
             w.string(pedal.id).bool(pedal.on).array(len(pedal.params))
             for index, value in enumerate(pedal.params):

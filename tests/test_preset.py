@@ -69,6 +69,11 @@ class PresetTest(unittest.TestCase):
         self.assertEqual(preset.pedal("reverb").name, "Plate Rich")
         self.assertEqual(Preset.parse(preset.encode()).name, "Old style")
 
+    def test_non_ascii_names_are_cleaned(self):
+        preset = Preset.parse(captured("preset1"))
+        preset.name = "John Mayer \U0001f525 Slow dancing  \u00e9t\u00e9"
+        self.assertEqual(Preset.parse(preset.encode()).name, "John Mayer Slow dancing t")
+
     def test_newer_models_are_flagged(self):
         preset = Preset.parse(captured("preset1"))
         preset.pedals[3].id = "ODS50CN"
@@ -103,6 +108,22 @@ class EventTest(unittest.TestCase):
 
     def test_unknown_message(self):
         self.assertEqual(parse_event(p.Message(p.REPLY, 0x55, b"\x01")).kind, "other")
+
+
+
+class ToneCloudTest(unittest.TestCase):
+    def test_converts_tonecloud_preset(self):
+        import json
+        from spark40.library import from_tonecloud
+        item = json.loads((DATA / "tonecloud.json").read_text())
+        preset = from_tonecloud(item)
+        self.assertEqual(preset.name, "Dire Straits")
+        self.assertEqual([pd.id for pd in preset.pedals],
+                         ["bias.noisegate", "LA2AComp", "Booster", "ADClean", "Flanger", "VintageDelay", "bias.reverb"])
+        self.assertFalse(preset.pedals[0].on)
+        self.assertTrue(preset.pedal("amp").on)
+        self.assertEqual(preset.unsupported((1, 2, 3, 37)), [])
+        self.assertEqual(Preset.parse(preset.encode()).name, "Dire Straits")
 
 
 if __name__ == "__main__":

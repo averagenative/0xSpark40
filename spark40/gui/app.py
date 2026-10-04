@@ -1,0 +1,111 @@
+"""Application entry point: ``python3 -m spark40.gui``."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+
+import gi
+
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+gi.require_version("Graphene", "1.0")
+from gi.repository import Adw, Gdk, Gio, GLib, Graphene, Gtk  # noqa: E402
+
+from .. import log  # noqa: E402
+from .window import SparkWindow  # noqa: E402
+
+APP_ID = "io.github.averagenative.spark40"
+
+CSS = """
+.spark-slider value {
+  font-feature-settings: "tnum";
+  min-width: 3.5em;
+}
+"""
+
+
+def save_png(window: Gtk.Window, path: str, widget: Gtk.Widget | None = None) -> None:
+    """Render a widget (default: the window's content) to a PNG without a screen-capture portal."""
+    widget = widget or window.get_content()
+    width, height = widget.get_width(), widget.get_height()
+    snapshot = Gtk.Snapshot()
+    background = Adw.StyleManager.get_default().get_dark()
+    color = Gdk.RGBA()
+    color.parse("#242424" if background else "#fafafa")
+    snapshot.append_color(color, Graphene.Rect().init(0, 0, width, height))
+    Gtk.WidgetPaintable.new(widget).snapshot(snapshot, width, height)
+    texture = window.get_renderer().render_texture(snapshot.to_node(), Graphene.Rect().init(0, 0, width, height))
+    texture.save_to_png(path)
+
+
+class SparkApplication(Adw.Application):
+    def __init__(self, screenshot: str | None = None, height: int | None = None, demo: bool = False,
+                 address: str | None = None, theme: str | None = None):
+        super().__init__(application_id=APP_ID)
+        self.screenshot = screenshot
+        self.height = height
+        self.demo = demo
+        self.address = address
+        self.theme = theme
+
+    def do_startup(self):
+        Adw.Application.do_startup(self)
+        self._use_bundled_icon()
+        provider = Gtk.CssProvider()
+        provider.load_from_string(CSS)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    def _use_bundled_icon(self) -> None:
+        """Let the window find the app icon inside the AppImage or the source tree."""
+        import os
+        from pathlib import Path
+        theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+        appdir = os.environ.get("SPARK40_APPDIR")
+        if appdir:
+            theme.add_search_path(str(Path(appdir) / "usr" / "share" / "icons"))
+        source_data = Path(__file__).resolve().parents[2] / "data"
+        if source_data.is_dir():
+            theme.add_search_path(str(source_data))
+        Gtk.Window.set_default_icon_name(APP_ID)
+
+    def do_activate(self):
+        window = self.get_active_window()
+        if window is None:
+            worker_class = None
+            if self.demo:
+                from .demo import DemoWorker
+                worker_class = DemoWorker
+            window = SparkWindow(self, on_first_state=self._capture if self.screenshot else None,
+                                 worker_class=worker_class, address=self.address)
+            if self.theme:
+                window.activate_action("win.theme", GLib.Variant("s", self.theme))
+            if self.height:
+                window.set_default_size(1280, self.height)
+        window.present()
+
+    def _capture(self, window):
+        def shoot():
+            save_png(window, self.screenshot)
+            window.close()
+            return GLib.SOURCE_REMOVE
+        GLib.timeout_add(2500 if self.demo else 3500, shoot)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="spark40-gui")
+    parser.add_argument("--screenshot", metavar="PNG", help="Render the window to a PNG after connecting, then quit")
+    parser.add_argument("--height", type=int, help="Window height, useful with --screenshot")
+    parser.add_argument("--debug", action="store_true", help="Log raw blocks and print the log to the terminal")
+    parser.add_argument("--demo", action="store_true", help="Open with sample settings and no amp")
+    parser.add_argument("--address", help="Bluetooth address of the amp's BLE side (default: find it)")
+    parser.add_argument("--theme", help="Start with this theme, for screenshots")
+    args, rest = parser.parse_known_args(argv)
+    if args.debug:
+        log.to_stderr()
+        log.enable_debug(True)
+    app = SparkApplication(args.screenshot, args.height, args.demo, args.address, args.theme)
+    if args.screenshot or args.demo:
+        app.set_flags(app.get_flags() | Gio.ApplicationFlags.NON_UNIQUE)
+    return app.run([sys.argv[0], *rest])

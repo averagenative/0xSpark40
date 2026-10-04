@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=0xSpark40
+Comment=Control a Positive Grid Spark 40 amp over Bluetooth
+Exec=env PYTHONPATH=@REPO@ python3 -m spark40.gui
+Icon=io.github.averagenative.spark40
+Categories=AudioVideo;Audio;Music;
+Keywords=guitar;amp;spark;positive grid;tonecloud;
+StartupWMClass=io.github.averagenative.spark40
+Terminal=false

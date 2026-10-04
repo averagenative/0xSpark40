@@ -217,6 +217,16 @@ class Spark:
                 continue
             self._unsolicited(message)
 
+    def poll(self, timeout: float = 0.05) -> list[Event]:
+        """The change reports that arrive within ``timeout`` seconds, without blocking longer."""
+        deadline = time.monotonic() + timeout
+        while (left := deadline - time.monotonic()) > 0:
+            message = self.transport.receive(timeout=left)
+            if message is None:
+                break
+            self._unsolicited(message)
+        return self.pending_events()
+
     def pending_events(self) -> list[Event]:
         events = list(self._events)
         self._events.clear()

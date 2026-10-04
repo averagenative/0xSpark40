@@ -8,7 +8,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from . import catalog, log
+from . import catalog, library, log
 from .client import Spark, SparkError, UnsupportedModel
 from .preset import Preset
 from .protocol import firmware_text
@@ -23,7 +23,7 @@ SLOT_ALIASES = {
     "reverb": "reverb", "verb": "reverb",
 }
 
-BACKUP_DIR = Path.home() / "Music" / "Spark Presets" / "Backups"
+BACKUP_DIR = library.BACKUP_DIR
 
 
 def slot_arg(text: str) -> str:
@@ -197,6 +197,34 @@ def cmd_load(spark: Spark, args) -> None:
     print(f"Loaded {preset.name!r} (not saved to a preset slot)" if ok else "The amp didn't accept the preset.")
 
 
+def cmd_cloud(args) -> int:
+    """Search ToneCloud, or download a preset from it. Needs no amp unless playing."""
+    if args.load or args.save:
+        preset = library.tonecloud_preset(args.load or args.save)
+        if args.save:
+            folder = library.USER_DIR / "ToneCloud"
+            folder.mkdir(parents=True, exist_ok=True)
+            path = folder / f"{library.safe_name(preset.name)}.json"
+            preset.save(path)
+            print(f"Saved {preset.name!r} to {path}")
+            return 0
+        with Spark.open(args.address) as spark:
+            try:
+                ok = spark.load_preset(preset, force=args.force)
+            except UnsupportedModel as err:
+                sys.exit(str(err))
+        print(f"Playing {preset.name!r} from ToneCloud" if ok else "The amp didn't accept the preset.")
+        return 0
+    results = library.tonecloud_search(args.keyword, order=args.order, page_size=args.count)
+    for item in results:
+        missing = item.missing(None)
+        note = f"  (needs {', '.join(missing)})" if missing else ""
+        print(f"{item.id}  {item.downloads:8,d}  {item.category:12s} {item.name}{note}")
+    if not results:
+        print("No presets found.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="spark40", description="Control a Positive Grid Spark 40 over Bluetooth.")
     parser.add_argument("--address", help="Bluetooth address of the amp's BLE side (default: find it)")
@@ -236,6 +264,13 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("load", help="play a JSON preset on the amp without saving it to a slot")
     p.add_argument("file")
     p.add_argument("--force", action="store_true", help="send even if this firmware lacks a model in it")
+    p = sub.add_parser("cloud", help="search Positive Grid's ToneCloud, or play or save a preset from it")
+    p.add_argument("keyword", nargs="?", help="song, artist, or style")
+    p.add_argument("--order", choices=library.TONECLOUD_ORDERS, default="popular")
+    p.add_argument("--count", type=int, default=20, help="results to show (default 20)")
+    p.add_argument("--load", metavar="ID", help="play this preset on the amp")
+    p.add_argument("--save", metavar="ID", help="save this preset to your presets folder")
+    p.add_argument("--force", action="store_true", help="send even if this firmware lacks a model in it")
     return parser
 
 
@@ -253,6 +288,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "models":
         cmd_models(args)
         return 0
+    if args.command == "cloud":
+        try:
+            return cmd_cloud(args)
+        except OSError as err:
+            print(f"Couldn't reach ToneCloud: {err}", file=sys.stderr)
+            return 1
     func = getattr(args, "func", None) or COMMANDS[args.command]
     try:
         from .ble import SparkNotFound
