@@ -289,8 +289,12 @@ def main(argv: list[str] | None = None) -> int:
         cmd_models(args)
         return 0
     if args.command == "cloud":
+        from .ble import SparkNotFound
         try:
             return cmd_cloud(args)
+        except SparkNotFound as err:
+            print(err, file=sys.stderr)
+            return 1
         except OSError as err:
             print(f"Couldn't reach ToneCloud: {err}", file=sys.stderr)
             return 1

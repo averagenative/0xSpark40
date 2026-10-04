@@ -136,9 +136,7 @@ class SparkBle:
         self.address = info.get("address")
         self.path = f"bluetooth:{self.address}"
         if not info.get("connected"):
-            LOG.info("Connecting to %s (%s)", self.name, self.address)
-            self.bus.call_sync(BLUEZ, self.device, "org.bluez.Device1", "Connect", None, None,
-                               Gio.DBusCallFlags.NONE, int(connect_timeout * 1000), None)
+            self._connect(connect_timeout)
         self.write_char, self.notify_char = self._characteristics(connect_timeout)
         reply, fds = self.bus.call_with_unix_fd_list_sync(
             BLUEZ, self.notify_char, "org.bluez.GattCharacteristic1", "AcquireNotify",
@@ -150,6 +148,27 @@ class SparkBle:
         self._stop = threading.Event()
         self._reader = threading.Thread(target=self._read_loop, name="spark40-ble-in", daemon=True)
         self._reader.start()
+
+    def _connect(self, timeout: float) -> None:
+        LOG.info("Connecting to %s (%s)", self.name, self.address)
+        try:
+            self.bus.call_sync(BLUEZ, self.device, "org.bluez.Device1", "Connect", None, None,
+                               Gio.DBusCallFlags.NONE, int(timeout * 1000), None)
+            return
+        except GLib.Error as err:
+            if "InProgress" not in err.message and "AlreadyConnected" not in err.message:
+                raise SparkNotFound("Couldn't connect to the Spark over Bluetooth. Turn the amp on, and close the "
+                                    f"Spark app on any phone or tablet connected to it. ({err.message})") from err
+        # Another connect attempt is already running; wait for it instead of failing.
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                if _get(self.bus, self.device, "org.bluez.Device1", "Connected"):
+                    return
+            except GLib.Error:
+                break
+            time.sleep(0.25)
+        raise SparkNotFound("Couldn't connect to the Spark over Bluetooth. Turn the amp on and try again.")
 
     def _characteristics(self, timeout: float) -> tuple[str, str]:
         deadline = time.monotonic() + timeout
