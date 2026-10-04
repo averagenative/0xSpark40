@@ -57,6 +57,7 @@ class SparkWorker(threading.Thread):
         self._refresh_requested = False
         self._names_requested = False
         self._dry_states: list[bool] | None = None
+        self.keep_knobs = True      # carry the five amp knobs over when the amp model changes
         self.spark: Spark | None = None
         self.state: SparkState | None = None
 
@@ -192,9 +193,12 @@ class SparkWorker(threading.Thread):
             elif event.kind == "preset":
                 self._dry_states = None
                 self._refresh_requested = True
-            elif event.kind in ("model", "stored"):
+            elif event.kind == "model":
+                self._model_changed_on_amp(event.old, event.new)
                 self._refresh_requested = True
-                self._names_requested = event.kind == "stored"
+            elif event.kind == "stored":
+                self._refresh_requested = True
+                self._names_requested = True
 
     # Keeping the cached settings in step
 
@@ -212,6 +216,24 @@ class SparkWorker(threading.Thread):
         pedal = self._pedal(effect)
         if pedal is not None:
             pedal.on = on
+
+    def _model_changed_on_amp(self, old: str, new: str) -> None:
+        """The amp's own amp selector changed the model. Like the Spark app, send the knobs back.
+
+        The amp loads the new model's default knobs, which can be much louder. With keep_knobs on,
+        the previous model's Gain, Treble, Middle, Bass, and Volume go to the new model instead.
+        """
+        pedal = self._pedal(old)
+        if pedal is None or self.state is None or self.state.current.pedals.index(pedal) != catalog.SLOTS.index("amp"):
+            return
+        previous = list(pedal.params[:AMP_KNOBS])
+        pedal.id = new
+        self._mark_edited()
+        if not self.keep_knobs or len(previous) < AMP_KNOBS:
+            return
+        LOG.info("Amp changed on the amp from %s to %s; keeping the amp knobs", old, new)
+        for index, value in enumerate(previous):
+            self.spark.set_param(new, index, value)
 
     def _mark_edited(self) -> None:
         if self.state is not None and not self.state.edited:

@@ -107,12 +107,32 @@ def _block(content: bytes, direction: bytes = TO_AMP) -> bytes:
     return MAGIC + direction + bytes((HEADER_LEN + len(content), 0)) + bytes(8) + content
 
 
-def encode(cmd: int, sub: int, payload: bytes = b"", seq: int = 0) -> list[bytes]:
-    """Frame one message as the blocks to write to the amp, in order."""
+# Sequence numbers from the app run 0x01 to 0x3E; the amp numbers its own messages from 0x40.
+FIRST_SEQ = 0x01
+LAST_SEQ = 0x3E
+
+
+def next_seq(seq: int, steps: int = 1) -> int:
+    for _ in range(steps):
+        seq = FIRST_SEQ if seq >= LAST_SEQ else seq + 1
+    return seq
+
+
+def block_seq(block: bytes) -> int:
+    """The sequence number of the (first) chunk in a block."""
+    return block[HEADER_LEN + 2]
+
+
+def encode(cmd: int, sub: int, payload: bytes = b"", seq: int = FIRST_SEQ) -> list[bytes]:
+    """Frame one message as the blocks to write to the amp, in order.
+
+    Each chunk of a multi-chunk preset takes the next sequence number, as the Spark app does;
+    the amp acknowledges each chunk under its own number.
+    """
     if (cmd, sub) not in MULTI_CHUNK:
         return [_block(_chunk(seq, cmd, sub, payload))]
     parts = [payload[i:i + SEND_CHUNK_DATA] for i in range(0, len(payload), SEND_CHUNK_DATA)] or [b""]
-    return [_block(_chunk(seq, cmd, sub, bytes((len(parts), i, len(part))) + part))
+    return [_block(_chunk(next_seq(seq, i), cmd, sub, bytes((len(parts), i, len(part))) + part))
             for i, part in enumerate(parts)]
 
 
@@ -126,7 +146,7 @@ class Decoder:
     def __init__(self):
         self._blocks = bytearray()
         self._chunks = bytearray()
-        self._parts: dict[tuple[int, int, int], list[bytes]] = {}
+        self._parts: dict[tuple[int, int], list[bytes]] = {}
 
     def feed(self, data: bytes) -> list[Message]:
         self._blocks.extend(data)
@@ -180,7 +200,7 @@ class Decoder:
         if (cmd, sub) not in MULTI_CHUNK or len(data) < 3:
             return Message(cmd, sub, data, seq)
         count, index, length = data[0], data[1], data[2]
-        key = (cmd, sub, seq)
+        key = (cmd, sub)       # the amp repeats one sequence number across chunks; the app counts up
         parts = self._parts.setdefault(key, [])
         if index != len(parts):
             LOG.warning("Preset chunk %d arrived when %d was expected; dropping the partial preset", index, len(parts))

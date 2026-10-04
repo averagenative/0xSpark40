@@ -73,7 +73,7 @@ def parse_event(message: p.Message) -> Event:
 class Spark:
     def __init__(self, transport):
         self.transport = transport
-        self._seq = 0
+        self._seq = p.FIRST_SEQ
         self._events: collections.deque[Event] = collections.deque()
         self.firmware: tuple[int, int, int, int] | None = None
 
@@ -98,10 +98,10 @@ class Spark:
 
     # Plumbing
 
-    def _send(self, cmd: int, sub: int, payload: bytes = b"") -> tuple[int, list[bytes]]:
-        seq = self._seq
-        self._seq = (self._seq + 1) & 0x7F
-        return seq, p.encode(cmd, sub, payload, seq)
+    def _send(self, cmd: int, sub: int, payload: bytes = b"") -> list[bytes]:
+        blocks = p.encode(cmd, sub, payload, self._seq)
+        self._seq = p.next_seq(self._seq, len(blocks))
+        return blocks
 
     def _wait(self, match: Callable[[p.Message], bool], timeout: float) -> p.Message | None:
         deadline = time.monotonic() + timeout
@@ -121,7 +121,8 @@ class Spark:
         self._events.append(parse_event(message))
 
     def query(self, sub: int, payload: bytes = b"", timeout: float = REPLY_TIMEOUT) -> p.Message:
-        seq, blocks = self._send(p.GET, sub, payload)
+        blocks = self._send(p.GET, sub, payload)
+        seq = p.block_seq(blocks[0])
         for block in blocks:
             self.transport.write(block)
         reply = self._wait(lambda m: m.key == (p.REPLY, sub) and m.seq == seq, timeout)
@@ -131,8 +132,8 @@ class Spark:
 
     def command(self, sub: int, payload: bytes = b"", ack: bool = True, timeout: float = REPLY_TIMEOUT) -> bool:
         """Send a change. Returns whether the amp acknowledged every block of it."""
-        seq, blocks = self._send(p.SET, sub, payload)
-        for block in blocks:
+        for block in self._send(p.SET, sub, payload):
+            seq = p.block_seq(block)
             self.transport.write(block)
             if ack and self._wait(lambda m: m.cmd in (p.ACK, p.ACK_LAST) and m.sub == sub and m.seq == seq,
                                   timeout) is None:

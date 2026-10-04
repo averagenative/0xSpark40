@@ -48,7 +48,13 @@ class EncodeTest(unittest.TestCase):
         messages = [m for b in echoed for m in decoder.feed(b)]
         self.assertEqual(len(messages), 1)
         self.assertEqual(messages[0].payload, payload)
-        self.assertEqual(messages[0].seq, 5)
+        self.assertEqual([p.block_seq(b) for b in out], [5, 6, 7])
+
+    def test_sequence_stays_in_app_range(self):
+        self.assertEqual(p.next_seq(0x3E), 0x01)
+        self.assertEqual(p.next_seq(0x3D, 3), 0x02)
+        out = p.encode(p.SET, p.PRESET, bytes(300), seq=0x3E)
+        self.assertEqual([p.block_seq(b) for b in out], [0x3E, 0x01, 0x02])
 
 
 class DecodeTest(unittest.TestCase):

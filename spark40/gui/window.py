@@ -221,13 +221,15 @@ class AmpSection(Section):
     def extra(self, body: Gtk.Box) -> None:
         self.keep_knobs = Gtk.CheckButton(
             label="Keep knobs when changing amps", active=bool(self.window.prefs.get("keep_knobs", True)),
-            tooltip_text="Carry Gain, Treble, Middle, Bass, and Volume over to the new amp instead of its defaults",
+            tooltip_text="Carry Gain, Treble, Middle, Bass, and Volume over to the new amp instead of its "
+                         "defaults, whether you pick the amp here or with the amp knob on the Spark",
             halign=Gtk.Align.END)
         self.keep_knobs.connect("toggled", self._keep_changed)
         body.append(self.keep_knobs)
 
     def _keep_changed(self, button) -> None:
         self.window.prefs["keep_knobs"] = button.get_active()
+        self.window.worker.keep_knobs = button.get_active()
         settings.save(self.window.prefs)
 
 
@@ -381,6 +383,7 @@ class SparkWindow(Adw.ApplicationWindow):
         else:
             self.worker = worker_class(self._on_state, self._on_event, self._on_status, self._on_error,
                                        self._on_result)
+        self.worker.keep_knobs = bool(self.prefs.get("keep_knobs", True))
         self._update_links()
         GLib.timeout_add_seconds(2, self._update_links)
         self.connect("close-request", self._on_close)

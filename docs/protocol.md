@@ -22,6 +22,10 @@ A block starts with a 16-byte header: `01 fe 00 00`, a direction (`53 fe` to the
 
 A chunk is `f0 01 <seq> <checksum> <cmd> <sub> <data> f7`. The data is the payload packed to 7-bit bytes: each group of up to seven bytes is preceded by a byte that holds their top bits. The checksum is the XOR of the packed data. Replies and acknowledgements carry the sequence number of the request they answer.
 
+The app numbers its messages from `0x01` to `0x3e` and then wraps; the amp numbers its own change reports from `0x40`. Each chunk of a preset sent to the amp takes the next sequence number, and the amp acknowledges each chunk with `04 01` under that number. With one sequence number repeated across the chunks, the amp acknowledged every chunk but never applied the preset. The amp itself repeats one sequence number across the chunks of a preset it sends.
+
+Bluetooth writes of a whole 173-byte block fail with `org.bluez.Error.InvalidArguments: Invalid Length`, so blocks go out in writes of at most 100 bytes. The amp reassembles them from the block length in the header.
+
 Only presets span chunks. Each chunk's data then starts with three bytes: the chunk count, the chunk index, and the number of payload bytes in the chunk. The app sends up to 128 payload bytes per chunk, one chunk per block of at most 173 bytes. The amp sends 25 payload bytes per chunk and packs several chunks into each block of at most 106 bytes.
 
 ## Commands
@@ -54,6 +58,12 @@ A preset payload is two bytes (a current-settings flag and the slot), the UUID a
 The pedals are always in this order: noise gate, compressor, drive, amp, modulation, delay, reverb. On firmware 1.2.3.37, every reverb is the model `bias.reverb`, and its seventh parameter picks the room as type index / 10. The live settings can report more parameters per pedal than a stored preset does: the noise gate reported three and the reverb eight.
 
 `spark40.preset.Preset.encode` reproduces the amp's own preset bytes exactly; the tests check this against presets read from the amp.
+
+To play a preset without storing it, send it to slot `0x7f` with `01 01`, then switch to that slot with `01 38 00 7f`. Sending alone doesn't change the sound. The amp keeps playing the live slot after the Bluetooth connection closes, and `02 10` then reports `0x7f` as the active preset.
+
+## Amp model changes
+
+Changing the amp model, from the app with `01 06` or with the amp selector knob on the Spark (reported as `03 06`), loads the new model's default knobs. Plexiglas, for example, starts at Volume 3.4 whatever the previous amp's Volume was. Paul Hamshere's notes say the Spark app answers `03 06` by sending five `01 04` parameter changes. This project does the same with the previous model's Gain, Treble, Middle, Bass, and Volume, so the volume doesn't jump.
 
 ## USB
 

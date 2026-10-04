@@ -40,7 +40,7 @@ def knob(value: float, switch: bool = False) -> str:
 
 
 def print_preset(preset: Preset) -> None:
-    where = {0x7F: "live"}.get(preset.slot, f"slot {preset.slot + 1}")
+    where = {0x7F: "live slot"}.get(preset.slot, f"preset {preset.slot + 1}")
     print(f"Preset  {preset.name!r} ({where}, {preset.bpm:g} BPM)")
     for slot, pedal in zip(catalog.SLOTS, preset.pedals):
         model = catalog.model(pedal.id)
@@ -67,7 +67,12 @@ def cmd_info(spark: Spark, args) -> None:
 
 
 def cmd_dump(spark: Spark, args) -> None:
-    preset = spark.get_current() if args.preset is None else spark.get_preset(args.preset - 1)
+    if args.preset is None:
+        preset = spark.get_current()
+        active = spark.get_active_preset()
+        preset.slot = active if active < 4 else 0x7F
+    else:
+        preset = spark.get_preset(args.preset - 1)
     if args.json:
         print(json.dumps(preset.to_dict(), indent=2))
     else:
@@ -188,13 +193,20 @@ def cmd_save(spark: Spark, args) -> None:
     print(f"Saved {preset.name!r} to {path}")
 
 
-def cmd_load(spark: Spark, args) -> None:
-    preset = Preset.load(args.file)
+def play(spark: Spark, preset: Preset, force: bool) -> None:
+    """Play a preset on the amp's live slot. The four stored presets stay as they are."""
     try:
-        ok = spark.load_preset(preset, force=args.force)
+        ok = spark.load_preset(preset, force=force)
     except UnsupportedModel as err:
         sys.exit(str(err))
-    print(f"Loaded {preset.name!r} (not saved to a preset slot)" if ok else "The amp didn't accept the preset.")
+    if not ok:
+        sys.exit("The amp didn't accept the preset.")
+    print(f"Playing {preset.name!r}. To keep it in a preset slot, hold that preset's button on the amp for "
+          "two seconds.")
+
+
+def cmd_load(spark: Spark, args) -> None:
+    play(spark, Preset.load(args.file), args.force)
 
 
 def cmd_cloud(args) -> int:
@@ -209,11 +221,7 @@ def cmd_cloud(args) -> int:
             print(f"Saved {preset.name!r} to {path}")
             return 0
         with Spark.open(args.address) as spark:
-            try:
-                ok = spark.load_preset(preset, force=args.force)
-            except UnsupportedModel as err:
-                sys.exit(str(err))
-        print(f"Playing {preset.name!r} from ToneCloud" if ok else "The amp didn't accept the preset.")
+            play(spark, preset, args.force)
         return 0
     results = library.tonecloud_search(args.keyword, order=args.order, page_size=args.count)
     for item in results:
@@ -295,9 +303,14 @@ def main(argv: list[str] | None = None) -> int:
         except SparkNotFound as err:
             print(err, file=sys.stderr)
             return 1
+        except SparkError as err:
+            print(f"Error: {err}", file=sys.stderr)
+            return 1
         except OSError as err:
             print(f"Couldn't reach ToneCloud: {err}", file=sys.stderr)
             return 1
+        except KeyboardInterrupt:
+            return 130
     func = getattr(args, "func", None) or COMMANDS[args.command]
     try:
         from .ble import SparkNotFound
