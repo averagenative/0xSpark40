@@ -27,6 +27,7 @@ SERVICE = "0000ffc0-0000-1000-8000-00805f9b34fb"
 WRITE_CHAR = "0000ffc1-0000-1000-8000-00805f9b34fb"
 NOTIFY_CHAR = "0000ffc2-0000-1000-8000-00805f9b34fb"
 DEFAULT_MTU = 23
+WRITE_PIECE = 100
 
 
 class SparkNotFound(RuntimeError):
@@ -165,7 +166,9 @@ class SparkBle:
 
     def write(self, block: bytes) -> None:
         log.frame("TX", block, "ble")
-        room = max(self.mtu - 3, DEFAULT_MTU - 3)
+        # The amp rejects long writes ("Invalid Length"), so send pieces of at most WRITE_PIECE bytes;
+        # it reassembles blocks from the length in their header.
+        room = min(max(self.mtu - 3, DEFAULT_MTU - 3), WRITE_PIECE)
         for i in range(0, len(block), room):
             self.bus.call_sync(BLUEZ, self.write_char, "org.bluez.GattCharacteristic1", "WriteValue",
                                GLib.Variant("(aya{sv})", (block[i:i + room], {"type": GLib.Variant("s", "request")})),
