@@ -4,6 +4,13 @@ Native Linux control for the Positive Grid Spark 40 amp. Positive Grid's Spark a
 
 **Status:** 1.0. A GTK4 app, a command-line tool, and a Python library, tested on a Spark 40 running firmware 1.2.3.37 on Fedora 44.
 
+<p>
+  <a href="docs/screenshots/main.webp"><img src="docs/screenshots/thumbs/main.jpg" width="400" alt="The 0xSpark40 window in the Spark 40 Black theme: the noise gate, compressor, and drive across the top, the amp beside the recording level meter, modulation, delay, and reverb below, then the four stored presets and the grille cloth."></a>
+  <a href="docs/screenshots/presets.webp"><img src="docs/screenshots/thumbs/presets.jpg" width="400" alt="The Presets window's ToneCloud tab, listing Dire Straits presets with their categories, authors, and download counts, and play and save buttons."></a>
+</p>
+
+Click a screenshot for the full size.
+
 ## Install
 
 Download `0xSpark40-1.0.0-x86_64.AppImage` from the [releases page](https://github.com/averagenative/0xSpark40/releases), make it executable, and run it:
@@ -65,6 +72,28 @@ Each knob responds to dragging, the scroll wheel, and the arrow keys. **Knob ste
 Changing the amp model keeps your Gain, Treble, Middle, Bass, and Volume unless you clear **Keep knobs when changing amps**. Other blocks start from the new model's default settings.
 
 The palette button picks a theme. The Spark finishes (Spark 40 Black, Spark 40 Pearl, Spark 2, Spark MINI Vai Red, and Spark LIVE) and the tolex colors (Emerald, Purple, and Blue) dress the panels in tolex with piping and put the grille cloth at the bottom. Adwaita follows your desktop's style.
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/screenshots/theme-black.webp"><img src="docs/screenshots/thumbs/theme-black.jpg" width="260" alt="The 0xSpark40 window in the Spark 40 Black theme: black tolex, gold piping, gold knobs, and a gold checkered grille."></a><br>Spark 40 Black</td>
+    <td align="center"><a href="docs/screenshots/theme-pearl.webp"><img src="docs/screenshots/thumbs/theme-pearl.jpg" width="260" alt="The 0xSpark40 window in the Spark 40 Pearl theme: white tolex, gold piping, and a brown checkered grille."></a><br>Spark 40 Pearl</td>
+    <td align="center"><a href="docs/screenshots/theme-spark2.webp"><img src="docs/screenshots/thumbs/theme-spark2.jpg" width="260" alt="The 0xSpark40 window in the Spark 2 theme: black tolex, bright gold piping, and a fine dark grille."></a><br>Spark 2</td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/theme-vai.webp"><img src="docs/screenshots/thumbs/theme-vai.jpg" width="260" alt="The 0xSpark40 window in the Spark MINI Vai Red theme: oxblood tolex, gold piping, and a black and gold grille."></a><br>Spark MINI Vai Red</td>
+    <td align="center"><a href="docs/screenshots/theme-live.webp"><img src="docs/screenshots/thumbs/theme-live.jpg" width="260" alt="The 0xSpark40 window in the Spark LIVE theme: black tolex with a silver-gray checkered grille."></a><br>Spark LIVE</td>
+    <td align="center"><a href="docs/screenshots/theme-emerald.webp"><img src="docs/screenshots/thumbs/theme-emerald.jpg" width="260" alt="The 0xSpark40 window in the Emerald theme: green tolex, cream knobs, and a silver mesh grille."></a><br>Emerald</td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/theme-purple.webp"><img src="docs/screenshots/thumbs/theme-purple.jpg" width="260" alt="The 0xSpark40 window in the Purple theme: purple tolex, gold piping, and a light woven grille."></a><br>Purple</td>
+    <td align="center"><a href="docs/screenshots/theme-blue.webp"><img src="docs/screenshots/thumbs/theme-blue.jpg" width="260" alt="The 0xSpark40 window in the Blue theme: navy tolex, cream piping, chrome knobs, and a cream woven grille."></a><br>Blue</td>
+    <td align="center"><a href="docs/screenshots/theme-adwaita.webp"><img src="docs/screenshots/thumbs/theme-adwaita.jpg" width="260" alt="The 0xSpark40 window in the Adwaita theme: your desktop's own style, with no tolex or grille."></a><br>Adwaita</td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/screenshots/theme-neon.webp"><img src="docs/screenshots/thumbs/theme-neon.jpg" width="260" alt="The 0xSpark40 window in the Neon theme: dark panels with glowing magenta and cyan accents."></a><br>Neon</td>
+    <td align="center"><a href="docs/screenshots/theme-metal.webp"><img src="docs/screenshots/thumbs/theme-metal.jpg" width="260" alt="The 0xSpark40 window in the Bare Metal theme: brushed metal panels."></a><br>Bare Metal</td>
+  </tr>
+</table>
 
 The Console button opens a live log of connections and errors. Turn on **Debug** in the console to log every block sent to and received from the amp.
 

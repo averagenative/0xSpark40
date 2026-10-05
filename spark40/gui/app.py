@@ -80,7 +80,7 @@ class SparkApplication(Adw.Application):
             window = SparkWindow(self, on_first_state=self._capture if self.screenshot else None,
                                  worker_class=worker_class, address=self.address)
             if self.theme:
-                window.activate_action("win.theme", GLib.Variant("s", self.theme))
+                window.preview_theme(self.theme)
             if self.height:
                 window.set_default_size(1280, self.height)
         window.present()
@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--debug", action="store_true", help="Log raw blocks and print the log to the terminal")
     parser.add_argument("--demo", action="store_true", help="Open with sample settings and no amp")
     parser.add_argument("--address", help="Bluetooth address of the amp's BLE side (default: find it)")
-    parser.add_argument("--theme", help="Start with this theme, for screenshots")
+    parser.add_argument("--theme", help="Show this theme without saving it as your choice (for screenshots)")
     args, rest = parser.parse_known_args(argv)
     if args.debug:
         log.to_stderr()

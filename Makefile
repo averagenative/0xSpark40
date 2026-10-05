@@ -46,3 +46,8 @@ dist: check
 
 release: dist appimage
 	packaging/release.sh $(VERSION)
+
+.PHONY: screenshots
+
+screenshots:
+	packaging/screenshots.sh
